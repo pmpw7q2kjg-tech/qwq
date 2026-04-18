@@ -1,0 +1,48 @@
+name: Build iOS App (IPA)
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch: # Manuel olarak tetiklemek için
+
+jobs:
+  build:
+    name: Build IPA
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Xcodegen
+        run: brew install xcodegen
+
+      - name: Generate Xcode Project
+        run: xcodegen generate
+
+      - name: Build Xcode Project
+        run: |
+          # Projeyi derle ve output klasörüne çıkart
+          xcodebuild clean build \
+            -project LiveVoice.xcodeproj \
+            -scheme LiveVoice \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Package IPA
+        run: |
+          # Derlenmiş .app dosyasını bulup .ipa formatına (Payload klasörü içine koyarak) dönüştür
+          cd build/Build/Products/Release-iphoneos
+          mkdir Payload
+          mv LiveVoice.app Payload/
+          zip -r LiveVoice.ipa Payload/
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: LiveVoice-IPA
+          path: build/Build/Products/Release-iphoneos/LiveVoice.ipa
